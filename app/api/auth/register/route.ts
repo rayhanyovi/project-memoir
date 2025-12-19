@@ -17,12 +17,15 @@ export async function POST(request: Request) {
 
   const existing = await db.user.findUnique({ where: { email } });
   if (existing) {
-    return NextResponse.json({ error: "Email already registered" }, { status: 409 });
+    return NextResponse.json(
+      { error: "Email already registered" },
+      { status: 409 }
+    );
   }
 
   const passwordHash = await hashPassword(input.password);
 
-  const user = await db.$transaction((tx) =>
+  const user = await db.$transaction((tx: any) =>
     tx.user.create({
       data: {
         email,

@@ -36,6 +36,7 @@ export default function AuthPage() {
       email,
       password,
       redirect: false,
+      callbackUrl: "/",
     });
 
     if (result?.error) {
@@ -43,8 +44,12 @@ export default function AuthPage() {
       return;
     }
 
-    router.push("/");
-    router.refresh();
+    setMessage("Signed in! Redirecting to your workspace…");
+
+    setTimeout(() => {
+      router.push("/");
+      router.refresh();
+    }, 4000);
   };
 
   const handleRegister = async () => {
@@ -81,7 +86,7 @@ export default function AuthPage() {
   };
 
   const handleGoogleSignIn = () => {
-    setMessage(null);
+    setMessage("Opening Google sign-in…");
     signIn("google", { callbackUrl: "/" });
   };
 
@@ -89,7 +94,9 @@ export default function AuthPage() {
     <div className="flex min-h-[70vh] flex-col items-center justify-center">
       <Card className="w-full max-w-lg gap-4 shadow-lg border-border/50">
         <CardHeader>
-          <CardTitle>{mode === "login" ? "Welcome back" : "Create your account"}</CardTitle>
+          <CardTitle>
+            {mode === "login" ? "Welcome back" : "Create your account"}
+          </CardTitle>
           <CardDescription>
             {mode === "login"
               ? "Sign in with your email and password or continue with Google."
@@ -136,7 +143,9 @@ export default function AuthPage() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                autoComplete={
+                  mode === "login" ? "current-password" : "new-password"
+                }
                 required
               />
             </div>
@@ -148,7 +157,11 @@ export default function AuthPage() {
             )}
 
             <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? "Please wait..." : mode === "login" ? "Sign in" : "Create account"}
+              {submitting
+                ? "Please wait..."
+                : mode === "login"
+                ? "Sign in"
+                : "Create account"}
             </Button>
           </form>
 
@@ -171,7 +184,9 @@ export default function AuthPage() {
             {mode === "login" ? "Need an account?" : "Already registered?"}{" "}
             <button
               type="button"
-              onClick={() => toggleMode(mode === "login" ? "register" : "login")}
+              onClick={() =>
+                toggleMode(mode === "login" ? "register" : "login")
+              }
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
               {mode === "login" ? "Create one" : "Sign in instead"}

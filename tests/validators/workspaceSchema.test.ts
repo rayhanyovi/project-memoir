@@ -5,7 +5,7 @@ import {
   createWorkspaceSchema,
   inviteMemberSchema,
   workspaceRoleSchema,
-} from "../../src/lib/validators/workspace";
+} from "../../lib/validators/workspace";
 
 describe("workspace slug", () => {
   it("accepts valid slugs", () => {

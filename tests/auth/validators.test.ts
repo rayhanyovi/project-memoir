@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeEmail } from "../../src/lib/auth/utils";
-import { credentialsSchema, registerSchema } from "../../src/lib/validators/auth";
+import { normalizeEmail } from "../../lib/auth/utils";
+import { credentialsSchema, registerSchema } from "../../lib/validators/auth";
 
 describe("register schema", () => {
   it("rejects invalid email", () => {

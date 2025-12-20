@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { MAX_BLOCKS } from "../../src/lib/validators/block";
-import { createPageSchema } from "../../src/lib/validators/page";
+import { MAX_BLOCKS } from "../../lib/validators/block";
+import { createPageSchema } from "../../lib/validators/page";
 
 describe("createPageSchema", () => {
   it("accepts a valid payload", () => {

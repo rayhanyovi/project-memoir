@@ -14,7 +14,9 @@ export function createAuthAdapter(): Adapter {
     async createUser(data) {
       const normalizedEmail = normalizeEmail(data.email);
       if (normalizedEmail) {
-        const existingUser = await db.user.findUnique({ where: { email: normalizedEmail } });
+        const existingUser = await db.user.findUnique({
+          where: { email: normalizedEmail },
+        });
         if (existingUser) {
           return existingUser;
         }
@@ -29,7 +31,7 @@ export function createAuthAdapter(): Adapter {
         email: normalizedEmail ?? data.email,
       });
     },
-    async linkAccount(account) {
+    linkAccount: (async (account) => {
       if (!originalLinkAccount) {
         throw new Error("Adapter missing linkAccount implementation");
       }
@@ -46,6 +48,6 @@ export function createAuthAdapter(): Adapter {
       }
 
       return originalLinkAccount(account);
-    },
+    }) as Adapter["linkAccount"],
   };
 }

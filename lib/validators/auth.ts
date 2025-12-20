@@ -5,9 +5,12 @@ const PASSWORD_MAX = 72; // keep bcrypt-safe upper bound; argon2 also fine.
 export const credentialsSchema = z
   .object({
     email: z.string().trim().toLowerCase().email(),
-    password: z.string().min(8, "Password must be at least 8 characters").max(PASSWORD_MAX),
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .max(PASSWORD_MAX),
   })
-  .strict();
+  .loose();
 
 export const registerSchema = credentialsSchema
   .extend({

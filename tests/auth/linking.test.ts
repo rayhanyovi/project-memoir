@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { resolveGoogleLinking } from "../../src/lib/auth/linking";
+import { resolveGoogleLinking } from "../../lib/auth/linking";
 
 const mockDb = ({
   user,

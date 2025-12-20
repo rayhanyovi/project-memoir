@@ -1,4 +1,4 @@
-import NextAuth, { type AuthOptions } from "next-auth";
+import type { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
@@ -36,8 +36,16 @@ export const authOptions: AuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(rawCredentials) {
+        console.log(
+          "[auth] authorize keys:",
+          Object.keys(rawCredentials ?? {})
+        );
+
         const parsed = credentialsSchema.safeParse(rawCredentials);
+
         if (!parsed.success) {
+          console.log("[auth] zod failed:", parsed.error.flatten());
+
           return null;
         }
 
@@ -51,7 +59,10 @@ export const authOptions: AuthOptions = {
           return null;
         }
 
-        const valid = await verifyPassword(user.credential.passwordHash, password);
+        const valid = await verifyPassword(
+          user.credential.passwordHash,
+          password
+        );
         if (!valid) {
           return null;
         }
@@ -67,7 +78,9 @@ export const authOptions: AuthOptions = {
   callbacks: {
     async signIn({ user, account, profile }) {
       if (account?.provider === "google") {
-        const emailVerified = (profile as { email_verified?: boolean } | undefined)?.email_verified;
+        const emailVerified = (
+          profile as { email_verified?: boolean } | undefined
+        )?.email_verified;
         if (emailVerified === false) {
           return false;
         }
@@ -92,7 +105,8 @@ export const authOptions: AuthOptions = {
     async session({ session, user }) {
       if (session.user && user) {
         session.user.id = user.id;
-        session.user.email = normalizeEmail(user.email) ?? user.email ?? undefined;
+        session.user.email =
+          normalizeEmail(user.email) ?? user.email ?? undefined;
       }
 
       return session;
@@ -102,5 +116,3 @@ export const authOptions: AuthOptions = {
     signIn: "/auth/login",
   },
 };
-
-export const authHandler = NextAuth(authOptions);

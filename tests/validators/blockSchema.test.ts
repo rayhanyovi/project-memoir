@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MAX_BLOCKS, blockSchema, blocksSchema } from "../../src/lib/validators/block";
+import { MAX_BLOCKS, blockSchema, blocksSchema } from "../../lib/validators/block";
 
 describe("blockSchema", () => {
   it("accepts valid nested blocks", () => {

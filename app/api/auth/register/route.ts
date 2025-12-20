@@ -6,6 +6,39 @@ import { db } from "@/lib/db";
 import { validateOrThrow } from "@/lib/validators";
 import { registerSchema } from "@/lib/validators/auth";
 
+interface ApiUser {
+  id: string;
+  email: string;
+  name: string | null;
+}
+
+interface CredentialCreate {
+  passwordHash: string;
+}
+
+interface CreateUserData {
+  email: string;
+  name?: string | null;
+  credential: {
+    create: CredentialCreate;
+  };
+}
+
+interface UserCreateSelect {
+  id: true;
+  email: true;
+  name: true;
+}
+
+interface TxUser {
+  user: {
+    create(args: {
+      data: CreateUserData;
+      select: UserCreateSelect;
+    }): Promise<ApiUser>;
+  };
+}
+
 export async function POST(request: Request) {
   const body = await request.json();
   const input = validateOrThrow(registerSchema, body);
@@ -25,7 +58,7 @@ export async function POST(request: Request) {
 
   const passwordHash = await hashPassword(input.password);
 
-  const user = await db.$transaction((tx: any) =>
+  const user: ApiUser = await db.$transaction((tx: TxUser) =>
     tx.user.create({
       data: {
         email,

@@ -14,10 +14,10 @@ const DOCS_DIR = path.join(__dirname, "docs");
 
 // Map source id -> filename (kamu bisa tambah nanti)
 const SOURCES = {
-  nextjs: "nextjs-llms.txt",
-  shadcn: "shadcn-llms.txt",
-  tiptap: "tiptap-llms.txt",
-  betterAuth: "betterauth-llms.txt",
+  nextjs: "nextjs-llms-full.txt",
+  shadcn: "shadcn-llms-full.txt",
+  tiptap: "tiptap-llms-full.txt",
+  betterauth: "betterauth-llms-full.txt",
 };
 
 // Load docs into memory once (local files, jadi aman dan cepat)
@@ -77,11 +77,15 @@ server.tool(
   "search_docs",
   {
     query: z.string().min(1),
-    sources: z.array(z.enum(["nextjs", "shadcn", "tiptap"])).optional(),
+    sources: z
+      .array(z.enum(["nextjs", "shadcn", "tiptap", "betterauth"]))
+      .optional(),
     limit: z.number().int().min(1).max(20).optional(),
   },
   async ({ query, sources, limit }) => {
-    const chosen = sources?.length ? sources : ["nextjs", "shadcn", "tiptap"];
+    const chosen = sources?.length
+      ? sources
+      : ["nextjs", "shadcn", "tiptap", "betterauth"];
     const perSourceLimit = Math.max(
       1,
       Math.floor((limit ?? 8) / chosen.length)

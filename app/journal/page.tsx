@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/layout/page-header"
+import Tiptap from "@/components/tiptap"
 import { Button } from "@/components/ui/button"
 
 export default function JournalPage() {
@@ -9,10 +10,7 @@ export default function JournalPage() {
         description="Capture daily notes, highlights, and reflections in one place."
         action={<Button size="sm">New entry</Button>}
       />
-      <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
-        Journaling tools will live here soon. Create entries, pin milestones,
-        and organize your writing without losing context.
-      </div>
+      <Tiptap />
     </div>
   )
 }

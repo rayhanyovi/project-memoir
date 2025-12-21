@@ -144,9 +144,10 @@ model Page {
   authorId       String?
   title          String
   /// Store Notion-like blocks as JSONB for MVP; future migrations can project to normalized block tables.
-  content        Json      @db.JsonB
+  content        Json      @default("{}") @db.JsonB
   /// Increment to signal downstream migrations or editor changes.
   contentVersion Int       @default(1)
+  plainText      String    @default("")
   /// Flagged once a page has been migrated away from JSON storage.
   migratedAt     DateTime?
   createdAt      DateTime  @default(now())
@@ -156,6 +157,7 @@ model Page {
   author    User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId])
+  @@index([workspaceId, updatedAt])
   @@index([authorId])
   @@index([updatedAt])
 }

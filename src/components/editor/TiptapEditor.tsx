@@ -28,10 +28,10 @@ import BubbleToolbar from "./menus/BubbleToolbar";
 import SlashCommand from "./extensions/slash-command";
 import Mention from "./extensions/mention";
 import { cn } from "@/lib/utils/cn";
-import { hoverPlusHandlePlugin } from "./plugins/hover-plus-handle";
 import { activeBlockPlugin } from "./plugins/active-block";
 import { commandHintPlugin } from "./plugins/command-hint";
 import { blockDndPlugin } from "./plugins/block-dnd";
+import { domBlockWrapperPlugin } from "./plugins/dom-block-wrapper";
 
 type TiptapEditorProps = {
   initialContent: JSONContent | null;
@@ -121,9 +121,9 @@ const TiptapEditor = ({
       Mention,
       SlashCommand,
       Extension.create({
-        name: "hoverPlusHandle",
+        name: "blockDnd",
         addProseMirrorPlugins() {
-          return [hoverPlusHandlePlugin({ editor: this.editor })];
+          return [blockDndPlugin()];
         },
       }),
       Extension.create({
@@ -142,6 +142,12 @@ const TiptapEditor = ({
         name: "commandHint",
         addProseMirrorPlugins() {
           return [commandHintPlugin()];
+        },
+      }),
+      Extension.create({
+        name: "domBlockWrapper",
+        addProseMirrorPlugins() {
+          return [domBlockWrapperPlugin({ editor: this.editor })];
         },
       }),
       Placeholder.configure({

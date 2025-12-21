@@ -438,11 +438,11 @@
 
 .memoir-handle-surface {
   position: absolute;
-  display: inline-flex;
+  display: none;
   gap: 0.35rem;
   align-items: center;
-  transform: translateY(-50%);
   z-index: 10;
+  pointer-events: auto;
 }
 
 .memoir-handle-button {
@@ -465,6 +465,15 @@
   background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--accent-foreground);
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.1);
+}
+
+.memoir-block-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.memoir-block-wrapper:hover .memoir-handle-surface {
+  display: flex;
 }
 
 .memoir-handle-drag {

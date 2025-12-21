@@ -438,11 +438,13 @@
 
 .memoir-handle-surface {
   position: absolute;
-  display: none;
+  display: inline-flex;
   gap: 0.35rem;
   align-items: center;
   z-index: 10;
-  pointer-events: auto;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
 }
 
 .memoir-handle-button {
@@ -473,7 +475,8 @@
 }
 
 .memoir-block-wrapper:hover .memoir-handle-surface {
-  display: flex;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .memoir-handle-drag {

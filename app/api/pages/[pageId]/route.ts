@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { extractPlainText } from "@/src/lib/tiptap/extractPlainText";
 import { UpdatePageSchema } from "@/src/lib/validators/tiptap";
 
 type RouteParams = {
-  params: {
+  params: Promise<{
     pageId: string;
-  };
+  }>;
 };
 
 const ensureWorkspaceAccess = async (pageId: string, userId: string) => {
@@ -52,21 +52,29 @@ const ensureDocShape = (content: unknown) => {
     (content as { type?: unknown }).type === "doc" &&
     Array.isArray((content as { content?: unknown }).content)
   ) {
-    return content;
+    const doc = content as { type: string; content: unknown[] };
+    if (doc.content.length === 0) {
+      return { type: "doc", content: [{ type: "paragraph" }] };
+    }
+    return doc;
   }
 
-  return { type: "doc", content: [] };
+  return { type: "doc", content: [{ type: "paragraph" }] };
 };
 
 export async function GET(_request: Request, { params }: RouteParams) {
-  const session = await auth();
+  const { pageId } = await params;
+  if (!pageId) {
+    return NextResponse.json({ error: "Missing pageId" }, { status: 400 });
+  }
+  const session = await getSession();
   const userId = session?.user?.id;
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const access = await ensureWorkspaceAccess(params.pageId, userId);
+  const access = await ensureWorkspaceAccess(pageId, userId);
   if ("error" in access) {
     return NextResponse.json(
       { error: access.error === "not_found" ? "Not found" : "Forbidden" },
@@ -86,14 +94,18 @@ export async function GET(_request: Request, { params }: RouteParams) {
 }
 
 export async function PATCH(request: Request, { params }: RouteParams) {
-  const session = await auth();
+  const { pageId } = await params;
+  if (!pageId) {
+    return NextResponse.json({ error: "Missing pageId" }, { status: 400 });
+  }
+  const session = await getSession();
   const userId = session?.user?.id;
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const access = await ensureWorkspaceAccess(params.pageId, userId);
+  const access = await ensureWorkspaceAccess(pageId, userId);
   if ("error" in access) {
     return NextResponse.json(
       { error: access.error === "not_found" ? "Not found" : "Forbidden" },
@@ -143,7 +155,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 
   const updated = await db.page.update({
-    where: { id: params.pageId },
+    where: { id: pageId },
     data,
     select: {
       contentVersion: true,

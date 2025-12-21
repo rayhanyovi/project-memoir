@@ -1,9 +1,10 @@
 import PageEditorClient from "@/src/components/editor/PageEditorClient";
 
-export default function PageEditorPage({
+export default async function PageEditorPage({
   params,
 }: {
-  params: { pageId: string };
+  params: Promise<{ pageId: string }>;
 }) {
-  return <PageEditorClient pageId={params.pageId} />;
+  const { pageId } = await params;
+  return <PageEditorClient pageId={pageId} />;
 }

@@ -8,7 +8,10 @@ import { createDebouncedSaver } from "@/src/lib/utils/debouncedSaver";
 
 type SaveStatus = "Idle" | "Saving" | "Saved" | "Error";
 
-const EMPTY_DOC: JSONContent = { type: "doc", content: [] };
+const EMPTY_DOC: JSONContent = {
+  type: "doc",
+  content: [{ type: "paragraph" }],
+};
 
 const coerceDoc = (content: unknown): JSONContent => {
   if (
@@ -17,7 +20,11 @@ const coerceDoc = (content: unknown): JSONContent => {
     (content as { type?: unknown }).type === "doc" &&
     Array.isArray((content as { content?: unknown }).content)
   ) {
-    return content as JSONContent;
+    const doc = content as JSONContent;
+    if (!doc.content || doc.content.length === 0) {
+      return EMPTY_DOC;
+    }
+    return doc;
   }
 
   return EMPTY_DOC;
@@ -163,9 +170,7 @@ const PageEditorClient = ({ pageId }: { pageId: string }) => {
   }
 
   if (loadError) {
-    return (
-      <div className="text-sm text-destructive">Error: {loadError}</div>
-    );
+    return <div className="text-sm text-destructive">Error: {loadError}</div>;
   }
 
   return (
@@ -178,7 +183,10 @@ const PageEditorClient = ({ pageId }: { pageId: string }) => {
           </div>
         </div>
       </div>
-      <TiptapEditor initialContent={initialContent} onChange={handleEditorChange} />
+      <TiptapEditor
+        initialContent={initialContent}
+        onChange={handleEditorChange}
+      />
     </div>
   );
 };

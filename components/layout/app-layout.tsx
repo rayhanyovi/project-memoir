@@ -11,6 +11,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import WorkspaceSwitcher from "@/src/components/workspace/WorkspaceSwitcher";
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -24,9 +25,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-6" />
-          <div className="text-sm font-semibold text-muted-foreground">
-            Memoir dashboard
-          </div>
+          <WorkspaceSwitcher />
 
           <div className="ml-auto flex items-center gap-3">
             <Input

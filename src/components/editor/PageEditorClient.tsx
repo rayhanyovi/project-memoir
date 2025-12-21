@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JSONContent } from "@tiptap/core";
 
-import TiptapEditor from "./TiptapEditor";
 import { createDebouncedSaver } from "@/src/lib/utils/debouncedSaver";
+import TiptapEditor from "./TiptapEditor";
 
 type SaveStatus = "Idle" | "Saving" | "Saved" | "Error";
 

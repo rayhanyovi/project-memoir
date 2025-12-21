@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/core";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
 import { getNodeTypeOffset } from "../utils/editorUi";
@@ -10,7 +10,6 @@ type HoverPlusHandleState = {
   to: number | null;
   nodeType: string | null;
   nodeAttrs?: Record<string, unknown> | null;
-  focused: boolean;
 };
 
 type HoverPlusHandleOptions = {
@@ -30,6 +29,17 @@ const findTopLevelBlock = (target: HTMLElement, editorDom: HTMLElement) => {
   return null;
 };
 
+const allowedDragNodeTypes = new Set([
+  "paragraph",
+  "heading",
+  "blockquote",
+  "codeBlock",
+  "table",
+  "bulletList",
+  "orderedList",
+  "taskList",
+]);
+
 export const hoverPlusHandlePlugin = ({ editor }: HoverPlusHandleOptions) => {
   return new Plugin<HoverPlusHandleState>({
     key: pluginKey,
@@ -40,7 +50,6 @@ export const hoverPlusHandlePlugin = ({ editor }: HoverPlusHandleOptions) => {
         to: null,
         nodeType: null,
         nodeAttrs: null,
-        focused: false,
       }),
       apply: (tr, prev) => {
         const meta = tr.getMeta(pluginKey) as
@@ -55,7 +64,6 @@ export const hoverPlusHandlePlugin = ({ editor }: HoverPlusHandleOptions) => {
           to: meta.to ?? prev.to,
           nodeType: meta.nodeType ?? prev.nodeType,
           nodeAttrs: meta.nodeAttrs ?? prev.nodeAttrs,
-          focused: meta.focused ?? prev.focused,
         };
       },
     },
@@ -64,7 +72,6 @@ export const hoverPlusHandlePlugin = ({ editor }: HoverPlusHandleOptions) => {
         const pluginState = pluginKey.getState(state);
         if (
           !pluginState ||
-          !pluginState.focused ||
           pluginState.pos === null ||
           pluginState.from === null ||
           pluginState.to === null ||
@@ -82,29 +89,82 @@ export const hoverPlusHandlePlugin = ({ editor }: HoverPlusHandleOptions) => {
             container.className = "tiptap-hover-handle";
             container.setAttribute("contenteditable", "false");
 
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = "tiptap-hover-handle-button";
-            button.textContent = "+";
-            button.setAttribute("aria-label", "Add block");
-            button.style.top = `${-2 + offset.top}px`;
-            button.style.left = `${-32 + offset.left}px`;
-            button.dataset.nodeType = nodeType;
+            const wrapper = document.createElement("div");
+            wrapper.className = "memoir-handle-surface";
+            wrapper.style.top = `${offset.top}px`;
+            wrapper.style.left = `${-48 + offset.left}px`;
+            wrapper.dataset.nodeType = nodeType;
 
-            button.addEventListener("mousedown", (event) => {
+            const addButton = document.createElement("button");
+            addButton.type = "button";
+            addButton.className = "memoir-handle-button";
+            addButton.textContent = "+";
+            addButton.setAttribute("aria-label", "Add block");
+            addButton.dataset.nodeType = nodeType;
+
+            addButton.addEventListener("mousedown", (event) => {
               event.preventDefault();
             });
 
-            button.addEventListener("click", (event) => {
+            addButton.addEventListener("click", (event) => {
               event.preventDefault();
-              const nextPos = Math.min(pos + 1, editor.state.doc.content.size);
-              editor.chain().focus().setTextSelection(nextPos).insertContent("/").run();
+              const { state } = editor;
+              const node = state.doc.nodeAt(from);
+              const insertAfter = node ? from + node.nodeSize : to;
+
+              editor
+                .chain()
+                .focus()
+                .command(({ tr, dispatch }) => {
+                  const paragraph = tr.doc.type.schema.nodes.paragraph.create();
+                  const targetPos =
+                    node &&
+                    node.type.name === "paragraph" &&
+                    node.content.size === 0
+                      ? from
+                      : insertAfter;
+
+                  if (
+                    targetPos + paragraph.nodeSize <= tr.doc.content.size + 2 &&
+                    !(
+                      node &&
+                      node.type.name === "paragraph" &&
+                      node.content.size === 0
+                    )
+                  ) {
+                    tr.insert(targetPos, paragraph);
+                  }
+
+                  const selectionPos =
+                    targetPos + 1 > tr.doc.content.size
+                      ? tr.doc.content.size
+                      : targetPos + 1;
+
+                  tr.setSelection(TextSelection.create(tr.doc, selectionPos));
+                  dispatch?.(tr);
+                  return true;
+                })
+                .insertContent("/")
+                .run();
             });
 
-            container.appendChild(button);
+            const dragHandle = document.createElement("button");
+            dragHandle.type = "button";
+            dragHandle.className = "memoir-handle-button memoir-handle-drag";
+            dragHandle.textContent = "⋮⋮";
+            dragHandle.setAttribute("aria-label", "Drag block");
+            dragHandle.draggable = true;
+            dragHandle.dataset.from = from.toString();
+            dragHandle.dataset.nodeType = nodeType;
+
+            wrapper.appendChild(addButton);
+            if (allowedDragNodeTypes.has(nodeType)) {
+              wrapper.appendChild(dragHandle);
+            }
+            container.appendChild(wrapper);
             return container;
           },
-          { side: -1, key: `hover-plus-${pos}` }
+          { side: -1, key: `hover-plus-${pos}`, ignoreSelection: true }
         );
 
         const hoverBlock = Decoration.node(from, to, {
@@ -116,9 +176,6 @@ export const hoverPlusHandlePlugin = ({ editor }: HoverPlusHandleOptions) => {
       handleDOMEvents: {
         mousemove: (view, event) => {
           if (!(event.target instanceof HTMLElement)) {
-            return false;
-          }
-          if (!view.hasFocus()) {
             return false;
           }
 
@@ -159,8 +216,7 @@ export const hoverPlusHandlePlugin = ({ editor }: HoverPlusHandleOptions) => {
             prev.pos !== nextPos ||
             prev.from !== from ||
             prev.to !== to ||
-            prev.nodeType !== node.type.name ||
-            !prev.focused
+            prev.nodeType !== node.type.name
           ) {
             view.dispatch(
               view.state.tr.setMeta(pluginKey, {
@@ -169,7 +225,6 @@ export const hoverPlusHandlePlugin = ({ editor }: HoverPlusHandleOptions) => {
                 to,
                 nodeType: node.type.name,
                 nodeAttrs: node.attrs ?? null,
-                focused: true,
               })
             );
           }
@@ -191,21 +246,11 @@ export const hoverPlusHandlePlugin = ({ editor }: HoverPlusHandleOptions) => {
           }
           return false;
         },
-        focus: (view) => {
-          const prev = pluginKey.getState(view.state);
-          if (prev && !prev.focused) {
-            view.dispatch(
-              view.state.tr.setMeta(pluginKey, { focused: true })
-            );
-          }
-          return false;
-        },
         blur: (view) => {
           const prev = pluginKey.getState(view.state);
-          if (prev && (prev.focused || prev.pos !== null)) {
+          if (prev?.pos !== null) {
             view.dispatch(
               view.state.tr.setMeta(pluginKey, {
-                focused: false,
                 pos: null,
                 from: null,
                 to: null,

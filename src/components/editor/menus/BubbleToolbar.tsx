@@ -122,12 +122,6 @@ const BubbleToolbar = ({ editor }: BubbleToolbarProps) => {
         const { from, to } = state.selection;
         return from !== to;
       }}
-      tippyOptions={{
-        maxWidth: "none",
-        placement: "top",
-        duration: 120,
-        moveTransition: "transform 120ms ease",
-      }}
     >
       <div className="memoir-bubble-menu">
         {actions.map((action) => (

@@ -47,6 +47,22 @@ export const activeBlockPlugin = () => {
           focused: meta?.focused ?? prev.focused,
         };
 
+        if (tr.docChanged && next.from !== null && next.to !== null) {
+          const fromResult = tr.mapping.mapResult(next.from, 1);
+          const toResult = tr.mapping.mapResult(next.to, -1);
+          if (
+            fromResult.deleted ||
+            toResult.deleted ||
+            fromResult.pos >= toResult.pos
+          ) {
+            next.from = null;
+            next.to = null;
+          } else {
+            next.from = fromResult.pos;
+            next.to = toResult.pos;
+          }
+        }
+
         if (tr.selectionSet) {
           const range = resolveTopLevelBlockRange(tr);
           next.from = range?.from ?? null;

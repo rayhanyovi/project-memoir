@@ -19,6 +19,8 @@ const draggableNodeTypes = new Set([
   "taskList",
 ]);
 
+const BLOCK_SELECTOR = "p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, table";
+
 const findTopLevelBlockFromPos = (
   view: EditorView,
   pos: number
@@ -31,18 +33,66 @@ const findTopLevelBlockFromPos = (
   return { from, to: from + node.nodeSize };
 };
 
+const findBlockFromEventTarget = (view: EditorView, event: DragEvent) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return null;
+
+  const wrapper =
+    target.closest("[data-memoir-wrapper]") ??
+    target.closest(".memoir-block-wrapper");
+  const block =
+    wrapper?.closest("li") ??
+    wrapper?.querySelector(BLOCK_SELECTOR) ??
+    target.closest(BLOCK_SELECTOR);
+  if (!(block instanceof HTMLElement)) return null;
+
+  const pos = view.posAtDOM(block, 0);
+  if (pos === null || Number.isNaN(pos)) return null;
+
+  const node = view.state.doc.nodeAt(pos);
+  if (!node) return null;
+
+  const rect = block.getBoundingClientRect();
+  const middle = rect.top + rect.height / 2;
+  const after = pos + node.nodeSize;
+
+  return event.clientY <= middle ? pos : after;
+};
+
+const clampCoordsToEditor = (
+  view: EditorView,
+  event: DragEvent
+): { pos: number } | null => {
+  const editorRect = (view.dom as HTMLElement).getBoundingClientRect();
+  const left = Math.min(
+    Math.max(event.clientX, editorRect.left + 2),
+    editorRect.right - 2
+  );
+  const top = Math.min(
+    Math.max(event.clientY, editorRect.top + 2),
+    editorRect.bottom - 2
+  );
+
+  return view.posAtCoords({ left, top });
+};
+
 const resolveDropPosition = (
   view: EditorView,
   event: DragEvent
 ): number | null => {
-  const coords = view.posAtCoords({
-    left: event.clientX,
-    top: event.clientY,
-  });
-  if (!coords) return null;
+  const coords =
+    view.posAtCoords({
+      left: event.clientX,
+      top: event.clientY,
+    }) ?? clampCoordsToEditor(view, event);
+  if (!coords) {
+    return findBlockFromEventTarget(view, event);
+  }
 
   const blockRange = findTopLevelBlockFromPos(view, coords.pos);
-  if (!blockRange) return null;
+  if (!blockRange) {
+    return findBlockFromEventTarget(view, event);
+  }
 
   const domAtPos = view.nodeDOM(blockRange.from) as HTMLElement | null;
   const node = view.state.doc.nodeAt(blockRange.from);
@@ -147,8 +197,8 @@ export const blockDndPlugin = () => {
           }
 
           event.preventDefault();
-          const from = state?.draggingFrom;
-          if (!from) return;
+          const from = state.draggingFrom;
+          if (from === null) return true;
           const to = from + node.nodeSize;
           let insertPos = state.dropPos;
 

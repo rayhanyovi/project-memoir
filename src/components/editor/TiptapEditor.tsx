@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { Extension, type Editor, type JSONContent } from "@tiptap/core";
-import { FloatingMenu, BubbleMenu } from "@tiptap/react/menus";
 
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -25,12 +24,14 @@ import Gapcursor from "@tiptap/extension-gapcursor";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { common, createLowlight } from "lowlight";
 
+import BubbleToolbar from "./menus/BubbleToolbar";
 import SlashCommand from "./extensions/slash-command";
 import Mention from "./extensions/mention";
 import { cn } from "@/lib/utils/cn";
-import { hoverPlusHandlePlugin } from "./plugins/hover-plus-handle";
 import { activeBlockPlugin } from "./plugins/active-block";
 import { commandHintPlugin } from "./plugins/command-hint";
+import { blockDndPlugin } from "./plugins/block-dnd";
+import { domBlockWrapperPlugin } from "./plugins/dom-block-wrapper";
 
 type TiptapEditorProps = {
   initialContent: JSONContent | null;
@@ -53,9 +54,31 @@ const TiptapEditor = ({
 }: TiptapEditorProps) => {
   const lowlight = useMemo(() => createLowlight(common), []);
   const hydratedRef = useRef(false);
+  const skipNextUpdateRef = useRef(true);
+  const onChangeRef = useRef(onChange);
 
-  const editor = useEditor({
-    extensions: [
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    hydratedRef.current = false;
+    skipNextUpdateRef.current = true;
+  }, [initialContent]);
+
+  const handleUpdate = useCallback(
+    ({ editor }: { editor: Editor }) => {
+      if (skipNextUpdateRef.current) {
+        skipNextUpdateRef.current = false;
+        return;
+      }
+      onChangeRef.current?.(editor.getJSON());
+    },
+    []
+  );
+
+  const extensions = useMemo(
+    () => [
       StarterKit.configure({
         codeBlock: false,
         dropcursor: false,
@@ -98,9 +121,9 @@ const TiptapEditor = ({
       Mention,
       SlashCommand,
       Extension.create({
-        name: "hoverPlusHandle",
+        name: "blockDnd",
         addProseMirrorPlugins() {
-          return [hoverPlusHandlePlugin({ editor: this.editor })];
+          return [blockDndPlugin()];
         },
       }),
       Extension.create({
@@ -115,6 +138,12 @@ const TiptapEditor = ({
           return [commandHintPlugin()];
         },
       }),
+      Extension.create({
+        name: "domBlockWrapper",
+        addProseMirrorPlugins() {
+          return [domBlockWrapperPlugin({ editor: this.editor })];
+        },
+      }),
       Placeholder.configure({
         placeholder: 'Write, or press "/" for commands',
         showOnlyWhenEditable: true,
@@ -124,14 +153,18 @@ const TiptapEditor = ({
       Dropcursor,
       Gapcursor,
     ],
+    [characterLimit, lowlight]
+  );
 
-    content: initialContent ?? undefined,
-    immediatelyRender: false,
-
-    onUpdate: ({ editor }) => {
-      onChange?.(editor.getJSON());
+  const editor = useEditor(
+    {
+      extensions,
+      content: initialContent ?? undefined,
+      immediatelyRender: false,
+      onUpdate: handleUpdate,
     },
-  });
+    [extensions, handleUpdate]
+  );
 
   // expose editor instance
   useEffect(() => {
@@ -141,6 +174,7 @@ const TiptapEditor = ({
   // hydrate once
   useEffect(() => {
     if (!editor || initialContent === null || hydratedRef.current) return;
+    skipNextUpdateRef.current = true;
     editor.commands.setContent(initialContent);
     hydratedRef.current = true;
   }, [editor, initialContent]);
@@ -149,7 +183,7 @@ const TiptapEditor = ({
     variant === "plain"
       ? cn("tiptap-editor text-sm text-foreground", className)
       : cn(
-          "tiptap-editor rounded-lg border bg-card p-4 text-sm text-foreground",
+          "tiptap-editor relative rounded-lg border bg-card p-4 text-sm text-foreground",
           className
         );
 
@@ -157,97 +191,7 @@ const TiptapEditor = ({
     <div className={wrapperClasses}>
       {editor && (
         <>
-          {/* Bubble menu (text selection) */}
-          <BubbleMenu
-            editor={editor}
-            // options={{ duration: 120, maxWidth: "none" }}
-          >
-            <div className="flex items-center gap-1 rounded-xl border bg-background/95 p-1 shadow-lg backdrop-blur">
-              <button
-                type="button"
-                onClick={() => editor.chain().focus().toggleBold().run()}
-                className={cn(
-                  "inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition hover:bg-muted",
-                  editor.isActive("bold") && "bg-muted"
-                )}
-                aria-label="Bold"
-              >
-                <span className="font-bold">B</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => editor.chain().focus().toggleItalic().run()}
-                className={cn(
-                  "inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition hover:bg-muted",
-                  editor.isActive("italic") && "bg-muted"
-                )}
-                aria-label="Italic"
-              >
-                <span className="italic">I</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => editor.chain().focus().toggleUnderline().run()}
-                className={cn(
-                  "inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition hover:bg-muted",
-                  editor.isActive("underline") && "bg-muted"
-                )}
-                aria-label="Underline"
-              >
-                <span className="underline">U</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => editor.chain().focus().toggleStrike().run()}
-                className={cn(
-                  "inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition hover:bg-muted",
-                  editor.isActive("strike") && "bg-muted"
-                )}
-                aria-label="Strikethrough"
-              >
-                <span className="line-through">S</span>
-              </button>
-
-              <div className="mx-1 h-5 w-px bg-border" />
-
-              <button
-                type="button"
-                onClick={() => editor.chain().focus().toggleCode().run()}
-                className={cn(
-                  "inline-flex h-8 items-center justify-center rounded-lg px-2 text-xs font-medium transition hover:bg-muted",
-                  editor.isActive("code") && "bg-muted"
-                )}
-                aria-label="Inline code"
-              >
-                {"</>"}
-              </button>
-            </div>
-          </BubbleMenu>
-
-          {/* Floating menu (empty line) */}
-          <FloatingMenu
-            editor={editor}
-            shouldShow={({ state }) => {
-              const { $from } = state.selection;
-              return (
-                $from.parent.type.name === "paragraph" &&
-                $from.parent.content.size === 0
-              );
-            }}
-          >
-            <div className="tiptap-floating-menu">
-              <button
-                onClick={() => editor.chain().focus().insertContent("/").run()}
-                className="tiptap-floating-button"
-                aria-label="Open commands"
-              >
-                ＋
-              </button>
-            </div>
-          </FloatingMenu>
+          <BubbleToolbar editor={editor} />
         </>
       )}
 

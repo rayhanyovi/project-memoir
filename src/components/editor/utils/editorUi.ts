@@ -17,15 +17,15 @@ export const getNodeTypeOffset = (
   if (nodeType === "heading") {
     const level = Number((attrs ?? {}).level ?? 1);
     if (level === 1) {
-      return { top: 2, left: 0 };
+      return { top: 8, left: 0 };
     }
     if (level === 2) {
-      return { top: 3, left: 0 };
+      return { top: 6, left: 0 };
     }
     if (level === 3) {
-      return { top: 4, left: 0 };
+      return { top: 5, left: 0 };
     }
-    return { top: 2, left: 0 };
+    return { top: 4, left: 0 };
   }
 
   if (
@@ -35,7 +35,7 @@ export const getNodeTypeOffset = (
     nodeType === "listItem" ||
     nodeType === "taskItem"
   ) {
-    return { top: 1, left: 12 };
+    return { top: 4, left: 12 };
   }
 
   if (
@@ -43,10 +43,10 @@ export const getNodeTypeOffset = (
     nodeType === "codeBlock" ||
     nodeType === "table"
   ) {
-    return { top: 2, left: 0 };
+    return { top: 6, left: 0 };
   }
 
-  return { top: 0, left: 0 };
+  return { top: 4, left: 0 };
 };
 
 const hasText = (node: JsonNode | null | undefined): boolean => {

@@ -55,4 +55,38 @@ describe("Tiptap editor UI hooks", () => {
       expect(container.querySelector(".ProseMirror-selectednode")).not.toBeNull();
     });
   });
+
+  it("reassigns active block when selection moves", async () => {
+    let editorRef: any = null;
+    const { container } = render(
+      <TiptapEditor
+        initialContent={{
+          type: "doc",
+          content: [
+            { type: "paragraph", content: [{ type: "text", text: "One" }] },
+            { type: "paragraph", content: [{ type: "text", text: "Two" }] },
+          ],
+        }}
+        onReady={(editor) => (editorRef = editor)}
+      />
+    );
+
+    await waitFor(() => {
+      expect(editorRef).not.toBeNull();
+    });
+
+    editorRef.commands.focus();
+    editorRef.commands.setTextSelection(2);
+
+    await waitFor(() => {
+      expect(container.querySelectorAll(".memoir-active-block").length).toBe(1);
+    });
+
+    editorRef.commands.setTextSelection(6);
+
+    await waitFor(() => {
+      const active = container.querySelector(".memoir-active-block");
+      expect(active?.textContent).toContain("Two");
+    });
+  });
 });

@@ -1,120 +1,83 @@
-import { getServerSession, type AuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import GoogleProvider from "next-auth/providers/google";
+import { headers } from "next/headers";
 
-import { createAuthAdapter } from "./auth/adapter";
-import { resolveGoogleLinking } from "./auth/linking";
-import { verifyPassword } from "./auth/password";
-import { normalizeEmail } from "./auth/utils";
+import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
+import { nextCookies } from "better-auth/next-js";
+
 import { db } from "./db";
-import { credentialsSchema } from "./validators/auth";
+import { hashPassword, verifyPassword } from "./auth/password";
 
-export const authOptions: AuthOptions = {
-  adapter: createAuthAdapter(),
-  session: {
-    strategy: "database",
+export const auth = betterAuth({
+  appName: "Memoir",
+  basePath: "/api/auth",
+  baseURL:
+    process.env.BETTER_AUTH_URL ??
+    process.env.AUTH_URL ??
+    process.env.NEXTAUTH_URL,
+  secret: process.env.BETTER_AUTH_SECRET ?? process.env.AUTH_SECRET,
+  database: prismaAdapter(db, { provider: "postgresql" }),
+  emailAndPassword: {
+    enabled: true,
+    password: {
+      hash: hashPassword,
+      verify: ({ hash, password }) => verifyPassword(hash, password),
+    },
   },
-  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
-  providers: [
-    GoogleProvider({
+  socialProviders: {
+    google: {
       clientId: process.env.GOOGLE_CLIENT_ID ?? "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-      profile(profile) {
-        return {
-          id: profile.sub,
-          name: profile.name,
-          email: normalizeEmail(profile.email),
-          image: profile.picture,
-          emailVerified: profile.email_verified ?? null,
-        };
-      },
-    }),
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(rawCredentials) {
-        console.log(
-          "[auth] authorize keys:",
-          Object.keys(rawCredentials ?? {})
-        );
-
-        const parsed = credentialsSchema.safeParse(rawCredentials);
-
-        if (!parsed.success) {
-          console.log("[auth] zod failed:", parsed.error.flatten());
-
-          return null;
-        }
-
-        const { email, password } = parsed.data;
-        const user = await db.user.findUnique({
-          where: { email },
-          include: { credential: true },
-        });
-
-        if (!user || !user.credential) {
-          return null;
-        }
-
-        const valid = await verifyPassword(
-          user.credential.passwordHash,
-          password
-        );
-        if (!valid) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-        };
-      },
-    }),
-  ],
-  callbacks: {
-    async signIn({ user, account, profile }) {
-      if (account?.provider === "google") {
-        const emailVerified = (
-          profile as { email_verified?: boolean } | undefined
-        )?.email_verified;
-        if (emailVerified === false) {
-          return false;
-        }
-
-        const decision = await resolveGoogleLinking({
-          email: user.email,
-          providerAccountId: account.providerAccountId,
-          db,
-        });
-
-        if (decision.action === "reject") {
-          return false;
-        }
-
-        if (decision.action === "use-existing") {
-          (user as { id?: string }).id = decision.userId;
-        }
-      }
-
-      return true;
-    },
-    async session({ session, user }) {
-      if (session.user && user) {
-        session.user.id = user.id;
-        session.user.email =
-          normalizeEmail(user.email) ?? user.email ?? undefined;
-      }
-
-      return session;
     },
   },
-  pages: {
-    signIn: "/auth/login",
+  user: {
+    modelName: "User",
+    fields: {
+      image: "avatarUrl",
+    },
   },
+  session: {
+    modelName: "Session",
+    fields: {
+      token: "sessionToken",
+      expiresAt: "expires",
+      userId: "userId",
+      ipAddress: "ipAddress",
+      userAgent: "userAgent",
+    },
+  },
+  account: {
+    modelName: "Account",
+    fields: {
+      providerId: "provider",
+      accountId: "providerAccountId",
+      userId: "userId",
+      accessToken: "access_token",
+      refreshToken: "refresh_token",
+      accessTokenExpiresAt: "accessTokenExpiresAt",
+      refreshTokenExpiresAt: "refreshTokenExpiresAt",
+      idToken: "id_token",
+      scope: "scope",
+      password: "password",
+    },
+  },
+  verification: {
+    modelName: "VerificationToken",
+    fields: {
+      value: "token",
+      expiresAt: "expires",
+      identifier: "identifier",
+      createdAt: "createdAt",
+      updatedAt: "updatedAt",
+    },
+  },
+  plugins: [nextCookies()],
+});
+
+export const getSession = async () => {
+  const headerList = await headers();
+  try {
+    return await auth.api.getSession({ headers: headerList });
+  } catch {
+    return null;
+  }
 };
-
-export const auth = () => getServerSession(authOptions);

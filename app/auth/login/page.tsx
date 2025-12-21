@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -14,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { authClient } from "@/lib/auth/client";
 
 type Mode = "login" | "register";
 
@@ -32,36 +32,47 @@ export default function AuthPage() {
   };
 
   const handleCredentialsSignIn = async () => {
-    const result = await signIn("credentials", {
+    const { data, error } = await authClient.signIn.email({
       email,
       password,
-      redirect: false,
-      callbackUrl: "/",
+      callbackURL: "/",
     });
 
-    if (result?.error) {
-      setMessage("Invalid credentials");
+    if (error) {
+      setMessage(error.message ?? "Invalid credentials");
+      return;
+    }
+
+    if (data?.redirect && data.url) {
+      window.location.href = data.url;
       return;
     }
 
     setMessage("Signed in! Redirecting to your workspace…");
-
     setTimeout(() => {
       router.push("/");
       router.refresh();
-    }, 4000);
+    }, 1000);
   };
 
   const handleRegister = async () => {
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name: name || undefined }),
+    const { data, error } = await authClient.signUp.email({
+      email,
+      password,
+      name: name.trim() || email.split("@")[0] || "User",
     });
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setMessage(data.error ?? "Unable to register");
+    if (error) {
+      setMessage(error.message ?? "Unable to register");
+      return;
+    }
+
+    if (data?.token) {
+      setMessage("Account created. Redirecting…");
+      setTimeout(() => {
+        router.push("/");
+        router.refresh();
+      }, 1000);
       return;
     }
 
@@ -85,9 +96,21 @@ export default function AuthPage() {
     }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setMessage("Opening Google sign-in…");
-    signIn("google", { callbackUrl: "/" });
+    const { data, error } = await authClient.signIn.social({
+      provider: "google",
+      callbackURL: "/",
+    });
+
+    if (error) {
+      setMessage(error.message ?? "Unable to sign in with Google");
+      return;
+    }
+
+    if (data?.redirect && data.url) {
+      window.location.href = data.url;
+    }
   };
 
   return (

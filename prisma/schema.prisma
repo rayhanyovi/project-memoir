@@ -25,7 +25,7 @@ model User {
   email         String            @unique
   name          String?
   avatarUrl     String?
-  emailVerified DateTime?
+  emailVerified Boolean           @default(false)
   status        UserStatus        @default(ACTIVE)
   lastLoginAt   DateTime?
   createdAt     DateTime          @default(now())
@@ -54,16 +54,19 @@ model Credential {
 model Account {
   id                String   @id @default(cuid())
   userId            String
-  type              String
+  type              String?
   provider          String
   providerAccountId String
   refresh_token     String?
   access_token      String?
   expires_at        Int?
+  accessTokenExpiresAt DateTime?
+  refreshTokenExpiresAt DateTime?
   token_type        String?
   scope             String?
   id_token          String?
   session_state     String?
+  password          String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -78,6 +81,8 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
+  ipAddress    String?
+  userAgent    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -92,6 +97,7 @@ model VerificationToken {
   token      String   @unique
   expires    DateTime
   createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@unique([identifier, token])
 }

@@ -103,13 +103,18 @@ export const blockDndPlugin = () => {
           const node = view.state.doc.nodeAt(from);
           if (!node || !draggableNodeTypes.has(node.type.name)) return false;
 
-          event.dataTransfer?.setData("application/x-memoir-block", "1");
-          event.dataTransfer?.setDragImage(handle, 8, 8);
-          event.dataTransfer?.setData("text/plain", node.type.name);
-          event.dataTransfer?.effectAllowed = "move";
+          if (event.dataTransfer) {
+            event.dataTransfer.setData("application/x-memoir-block", "1");
+            event.dataTransfer.setDragImage(handle, 8, 8);
+            event.dataTransfer.setData("text/plain", node.type.name);
+            event.dataTransfer.effectAllowed = "move";
+          }
 
           view.dispatch(
-            view.state.tr.setMeta(pluginKey, { draggingFrom: from, dropPos: null })
+            view.state.tr.setMeta(pluginKey, {
+              draggingFrom: from,
+              dropPos: null,
+            })
           );
           return true;
         },
@@ -125,24 +130,25 @@ export const blockDndPlugin = () => {
             event.dataTransfer.dropEffect = "move";
           }
 
-          if (state.dropPos !== dropPos) {
+          if (state?.dropPos !== dropPos) {
             view.dispatch(view.state.tr.setMeta(pluginKey, { dropPos }));
           }
           return true;
         },
         drop: (view, event) => {
           const state = pluginKey.getState(view.state);
-          if (state?.draggingFrom === null || state.dropPos === null) {
+          if (state?.draggingFrom === null || state?.dropPos === null) {
             return false;
           }
 
-          const node = view.state.doc.nodeAt(state.draggingFrom);
+          const node = view.state.doc.nodeAt(state?.draggingFrom ?? 0);
           if (!node || !draggableNodeTypes.has(node.type.name)) {
             return false;
           }
 
           event.preventDefault();
-          const from = state.draggingFrom;
+          const from = state?.draggingFrom;
+          if (!from) return;
           const to = from + node.nodeSize;
           let insertPos = state.dropPos;
 

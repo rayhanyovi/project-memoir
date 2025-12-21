@@ -127,6 +127,12 @@ const TiptapEditor = ({
         },
       }),
       Extension.create({
+        name: "blockDnd",
+        addProseMirrorPlugins() {
+          return [blockDndPlugin()];
+        },
+      }),
+      Extension.create({
         name: "activeBlock",
         addProseMirrorPlugins() {
           return [activeBlockPlugin()];
